@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<script src="math.min.js"></script>
+	<script src="http://code.jquery.com/jquery-1.10.2.js"></script>
+	<script src="http://code.jquery.com/ui/1.11.2/jquery-ui.js"></script>
+    <script src="http://code.createjs.com/createjs-2013.02.12.min.js"></script>
+    <script>
+	
+		function HashTable(obj)
+		{
+			this.length = 0;
+			this.items = {};
+			for (var p in obj) {
+				if (obj.hasOwnProperty(p)) {
+						this.items[p] = obj[p];
+						this.length++;
+					}
+				}
+
+				this.setItem = function(key, value)
+				{
+					var previous = undefined;
+					if (this.hasItem(key)) {
+						previous = this.items[key];
+					}
+					else {
+						this.length++;
+					}
+					this.items[key] = value;
+					return previous;
+				}
+
+				this.getItem = function(key) {
+					return this.hasItem(key) ? this.items[key] : undefined;
+				}
+
+				this.hasItem = function(key)
+				{
+					return this.items.hasOwnProperty(key);
+				}
+			   
+				this.removeItem = function(key)
+				{
+					if (this.hasItem(key)) {
+						previous = this.items[key];
+						this.length--;
+						delete this.items[key];
+						return previous;
+					}
+					else {
+						return undefined;
+					}
+				}
+
+				this.keys = function()
+				{
+					var keys = [];
+					for (var k in this.items) {
+						if (this.hasItem(k)) {
+							keys.push(k);
+						}
+					}
+					return keys;
+				}
+
+				this.values = function()
+				{
+					var values = [];
+					for (var k in this.items) {
+						if (this.hasItem(k)) {
+							values.push(this.items[k]);
+						}
+					}
+					return values;
+				}
+
+				this.each = function(fn) {
+					for (var k in this.items) {
+						if (this.hasItem(k)) {
+							fn(k, this.items[k]);
+						}
+					}
+				}
+
+				this.clear = function()
+				{
+					this.items = {}
+					this.length = 0;
+				}
+		}
+		var stage;
+		var matrix = [];
+		var nodeNames = [];
+		var neighbors = [];
+		var canvas;
+		
+		var currentNeighbors = [];
+		var prevNeighbors = [];
+		var totalNeighbors = [];
+		var locationHash = new HashTable({});
+		
+		var currentLocs = [];
+		var graphMatrix = math.matrix();
+		var graphInitialized = false;
+		//var currentGraph = math.matrix;
+		
+			
+		function LoadFile() {
+			var nodeCount = 0;
+			var inGraph = false;
+			var inNodes = false;
+			var inNeighbors = false;
+			var readDone = false;
+			var oFrame = document.getElementById("frmFile");
+			var strRawContents = oFrame.contentWindow.document.body.childNodes[0].innerHTML;
+			while (strRawContents.indexOf("\r") >= 0)
+				strRawContents = strRawContents.replace("\r", "");
+				
+			var arrLines = strRawContents.split("\n");
+			
+			for (var i = 0; i < arrLines.length; i++) {
+				matrix[i] = [];
+				neighbors[i] = [];
+				}
+				
+			for (var i = 0; i < arrLines.length; i++) {
+				var curLine = arrLines[i];
+				
+				if (curLine === "&lt;/graph&gt;"){
+					inGraph = false;
+					}
+					
+				if (curLine === "&lt;/nodeNames&gt;"){
+					inNodes = false;
+					}
+					
+				if (curLine === "&lt;/neighbors&gt;"){
+					readDone = true;
+					inNeighbors = false;
+				}
+								
+				if (inGraph){
+						var arrNums = curLine.split(" ");
+						matrix[parseInt(arrNums[0])][parseInt(arrNums[1])] = parseFloat(arrNums[2]);
+						//console.log(" [" + parseInt(arrNums[0]) + ", " + parseInt(arrNums[1]) + "] = " + parseFloat(arrNums[2]));
+					}
+				
+				if (inNodes){
+					nodeNames[nodeCount] = curLine.toLowerCase();
+					nodeCount = nodeCount + 1;
+					}
+					
+				if (inNeighbors){
+					var arrNums = curLine.split(" ");
+					for (j = 0; j < arrNums.length-1; j++){
+						neighbors[nodeCount][j] = parseInt(arrNums[j]);
+						}
+					nodeCount = nodeCount + 1;
+					}
+						
+				
+				if (curLine === "&lt;graph&gt;"){
+					inGraph = true;				
+					}
+				
+				if (curLine === "&lt;nodeNames&gt;"){
+					inNodes = true;
+					nodeCount = 0;
+					}
+				
+				if (curLine === "&lt;neighbors&gt;"){
+					inNeighbors = true;
+					nodeCount = 0;
+					}
+					
+			}
+		}
+		
+		function showGraph(){
+		
+		}
+
+        function init() {
+            // code here.
+			stage = new createjs.Stage("demoCanvas");
+			/*
+			var ball = new createjs.Shape();
+			ball.graphics.beginFill("#000000").drawCircle(0, 0, 50);
+			ball.x = 100;
+			ball.y = 100;
+			ball.addEventListener("click", ballHandleClick);
+			
+			createjs.Tween.get(ball,{loop:true}).to({x:450}, 3000).to({x:50}, 3000);
+			createjs.Ticker.addEventListener("tick",tick);
+			stage.addChild(ball); */
+			
+			$( "#searchBox" ).autocomplete({
+				source: nodeNames
+			});
+			
+			canvas = document.getElementById("demoCanvas");
+			canvas.addEventListener("mousedown", canvasOnClick, false);
+        }
+		
+		function runChange(){
+			totalNeighbors = [];
+			var searchStringIndex = nodeNames.indexOf($( "#searchBox" ).val().toLowerCase());
+			
+			if (searchStringIndex == -1)
+				return false;
+			
+			updateCanvas(searchStringIndex);
+		}
+		
+		function unique(arr) {
+			var hash = {}, result = [];
+			for ( var i = 0, l = arr.length; i < l; ++i ) {
+				if ( !hash.hasOwnProperty(arr[i]) ) { //it works with objects! in FF, at least
+					hash[ arr[i] ] = true;
+					result.push(arr[i]);
+				}	
+			}
+			return result;
+		}
+		
+		function updateCanvas(index){
+			
+			stage.removeAllChildren();
+			//stage.clear();
+			stage.update();
+			
+			centerX = 200;
+			centerY = 200;
+			radius = 75;
+			
+			newName = nodeNames[index];
+			var text = new createjs.Text(newName, "12px Arial", "#ff7700"); 
+			text.textAlign = "center";
+			text.x = centerX; 
+			text.y = centerY;
+			text.textBaseline = "alphabetic";
+			stage.addChild(text);
+			stage.update();
+			
+			
+			//console.log(index);
+			console.log("Index: " + index + " has neighbors: " + neighbors[index]);
+			currentNeighbors = neighbors[index];
+			//console.log("Search index: " + index);
+			totalNeighbors = totalNeighbors.concat(currentNeighbors).concat([index]);
+			totalNeighbors = unique(totalNeighbors);
+			//console.log("Total neighbor: " + totalNeighbors);			
+			
+			tempMatrix = math.zeros(totalNeighbors.length,totalNeighbors.length);
+			if (!graphInitialized){
+				// do nothing
+			}
+			else {
+				var ss = graphMatrix.size();
+				//console.log("Size: " + ss[0] + "\n");
+				tempMatrix.subset(math.index([0,ss[0]],[0,ss[1]]),graphMatrix);
+			}
+			graphMatrix = tempMatrix;
+			graphInitialized = true;
+			
+			for (i = 0; i < totalNeighbors.length; i++){
+				//i = totalNeighbors.length-1;
+				//console.log(totalNeighbors[i]);
+				for (j = 0; j < totalNeighbors.length; j++){
+					var v = matrix[totalNeighbors[i]][totalNeighbors[j]];
+					if  (v != undefined){
+						graphMatrix.subset(math.index(i, j), v);
+						graphMatrix.subset(math.index(j, i), v);
+					}
+				}
+			}
+			
+			//console.log(graphMatrix.toString());
+			
+			if (!locationHash.hasItem(index))
+				locationHash.setItem(index,[centerX,centerY]);
+			
+			//console.log(totalNeighbors);
+			for (i = 0; i < totalNeighbors.length; i++){
+				cNeighbor = totalNeighbors[i];
+				if (!locationHash.hasItem(cNeighbor)){
+					clocation = locationHash.getItem(index);
+					clocation = [clocation[0] + Math.random()*200-100, clocation[1] + Math.random()*200-100];
+					locationHash.setItem(cNeighbor,clocation);
+				}				
+			}
+			
+			
+			for (i = 0; i < totalNeighbors.length; i++){
+				index1 = totalNeighbors[i];
+				cLocation1 = locationHash.getItem(index1);
+				
+				text = new createjs.Text(nodeNames[index1], "12px Arial", "#ff7700");
+				text.x = cLocation1[0];
+				text.y = cLocation1[1];
+				text.textBaseline = "alphabetic";
+				text.textAlign = "center";
+				stage.addChild(text);
+				
+				for (j = 0; j < totalNeighbors.length; j++){
+					index2 = totalNeighbors[j];
+					cLocation2 = locationHash.getItem(index2);
+					if (graphMatrix.subset(math.index(i, j)) > 0){
+						var line = new createjs.Shape();
+						line.graphics.setStrokeStyle(3);
+						line.graphics.beginStroke("black");
+						line.graphics.moveTo(cLocation1[0], cLocation1[1]);
+						line.graphics.lineTo(cLocation2[0], cLocation2[1]);
+						line.graphics.endStroke();
+						stage.addChild(line);
+					}
+				}
+			}
+			//console.log(graphMatrix.toString());
+			
+			//optimizeLocations();
+			
+			/*for (i = 0; i < currentNeighbors.length; i++){
+				text = new createjs.Text(nodeNames[currentNeighbors[i]], "12px Arial", "#ff7700");
+				x = centerX + radius*Math.sin(Math.PI/5.0*(i-1)*2.0);
+				y = centerX + radius*Math.cos(Math.PI/5.0*(i-1)*2.0);
+				currentLocs[i] = [];
+				currentLocs[i][0] = x;
+				currentLocs[i][1] = y;
+				text.textBaseline = "alphabetic";
+				text.textAlign = "center";
+				text.x = x;
+				text.y = y;
+				stage.addChild(text);
+				
+				// var line = new createjs.Shape();
+				//line.graphics.setStrokeStyle(3);
+				//line.graphics.beginStroke("black");
+				//line.graphics.moveTo(centerX, centerY);
+				//line.graphics.lineTo(x,y);
+				//line.graphics.endStroke();
+				//stage.addChild(line);
+				
+				stage.update();
+			}*/
+			stage.update();
+			return false;
+		}
+		
+		function optimizeLocations(){
+			
+		}
+		
+		function canvasOnClick(event){
+			var distances = [];
+			var minDist = 10000000;
+			var bestIndex = -1;
+			var rect = canvas.getBoundingClientRect();
+			x = event.clientX - rect.left;
+			y = event.clientY - rect.top;
+			var cLoc = [];
+			
+			for (var k in locationHash.items){
+				if (locationHash.items.hasOwnProperty(k)) {
+					cLoc = locationHash.items[k];
+					
+					if (cLoc != undefined){
+						distance = Math.pow(x - cLoc[0],2) + Math.pow(y - cLoc[1],2);
+						if (distance < minDist){
+							minDist = distance;
+							bestIndex = k;
+						}
+					}
+				}
+			}
+			updateCanvas(bestIndex);
+			
+		}
+		
+		function ballHandleClick(event){
+			console.log("you done clicked");
+		}
+		
+		function tick(event){
+			stage.update();
+		}
+		
+    </script>
+</head>
+<iframe id="frmFile" src="testGraphSmall.txt" onload="LoadFile();" style="display: none;"></iframe>
+<body onLoad="init();">
+	<div class="ui-widget" onChange="runChange();">
+	<label for="searchBox">Search: </label>
+	<input id="searchBox">
+	<p>
+    <canvas id="demoCanvas" width="1200" height="1200">
+        alternate content
+    </canvas>
+	
+</div>
+</body>
+</html>
