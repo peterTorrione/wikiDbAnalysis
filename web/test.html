@@ -234,14 +234,6 @@
 			centerY = 200;
 			radius = 75;
 			
-			newName = nodeNames[index];
-			var text = new createjs.Text(newName, "12px Arial", "#ff7700"); 
-			text.textAlign = "center";
-			text.x = centerX; 
-			text.y = centerY;
-			text.textBaseline = "alphabetic";
-			stage.addChild(text);
-			stage.update();
 			
 			
 			//console.log(index);
@@ -296,13 +288,6 @@
 				index1 = totalNeighbors[i];
 				cLocation1 = locationHash.getItem(index1);
 				
-				text = new createjs.Text(nodeNames[index1], "12px Arial", "#ff7700");
-				text.x = cLocation1[0];
-				text.y = cLocation1[1];
-				text.textBaseline = "alphabetic";
-				text.textAlign = "center";
-				stage.addChild(text);
-				
 				for (j = 0; j < totalNeighbors.length; j++){
 					index2 = totalNeighbors[j];
 					cLocation2 = locationHash.getItem(index2);
@@ -317,6 +302,26 @@
 					}
 				}
 			}
+			
+			for (i = 0; i < totalNeighbors.length; i++){
+				index1 = totalNeighbors[i];
+				cLocation1 = locationHash.getItem(index1);
+				
+				text = new createjs.Text(nodeNames[index1], "12px Arial", "#ff7700");
+				text.x = cLocation1[0];
+				text.y = cLocation1[1];
+				text.textBaseline = "alphabetic";
+				text.textAlign = "center";
+				stage.addChild(text);
+			}
+			newName = nodeNames[index];
+			var text = new createjs.Text(newName, "12px Arial", "#ff7700"); 
+			text.textAlign = "center";
+			text.x = centerX; 
+			text.y = centerY;
+			text.textBaseline = "alphabetic";
+			stage.addChild(text);
+			stage.update();
 			//console.log(graphMatrix.toString());
 			
 			//optimizeLocations();
